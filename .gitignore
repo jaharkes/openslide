@@ -35,6 +35,8 @@ Makefile.in
 
 /mingw32-config.cache
 
+/rust/target
+
 /src/make-tables
 /src/openslide-tables.c
 

@@ -1,0 +1,14 @@
+[package]
+name = "openslide_internals"
+version = "0.1.0"
+authors = ["Jan Harkes <jaharkes@cs.cmu.edu>"]
+edition = "2018"
+
+[dependencies]
+
+[lib]
+name = "openslide_internals"
+crate-type = ["staticlib"]
+
+[profile.release]
+lto = true

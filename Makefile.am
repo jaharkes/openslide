@@ -2,19 +2,21 @@ EXTRA_DIST = README.txt lgpl-2.1.txt LICENSE.txt CHANGELOG.txt doc/Doxyfile CONT
 
 # doxygen
 dist-hook:
-	cd $(distdir)/doc; doxygen
+	(cd $(distdir)/doc && doxygen)
 
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = openslide.pc
 
 ACLOCAL_AMFLAGS=-I m4
 
+RUST_LIB=@abs_top_builddir@/rust/target/@RUST_TARGET_SUBDIR@/libopenslide_internals.a
+
 
 lib_LTLIBRARIES = src/libopenslide.la
 
 src_libopenslide_la_LIBADD = $(GLIB2_LIBS) $(CAIRO_LIBS) $(SQLITE3_LIBS) \
 	$(LIBXML2_LIBS) $(OPENJPEG_LIBS) $(LIBTIFF_LIBS) $(LIBPNG_LIBS) \
-	$(LIBJPEG_LIBS) $(GDKPIXBUF_LIBS) $(ZLIB_LIBS)
+	$(LIBJPEG_LIBS) $(GDKPIXBUF_LIBS) $(ZLIB_LIBS) $(RUST_LIB)
 
 src_libopenslide_la_SOURCES = \
 	src/openslide.c \
@@ -178,3 +180,38 @@ tools_openslide_write_png_LDADD = $(COMMON_LDADD) $(LIBPNG_LIBS)
 
 # man pages
 EXTRA_DIST += $(man_MANS:=.in)
+
+
+## Rust code
+# see https://people.gnome.org/~federico/blog/librsvg-build-infrastructure.html
+RUST_SRC = \
+	rust/Cargo.toml \
+	rust/src/lib.rs
+
+RUST_EXTRA = \
+	rust/Cargo.lock
+
+EXTRA_DIST += $(RUST_SRC) $(RUST_EXTRA)
+
+if DEBUG_RELEASE
+CARGO_RELEASE_ARGS=
+else
+CARGO_RELEASE_ARGS=--release
+endif
+
+CARGO_VERBOSE = $(cargo_verbose_$(V))
+cargo_verbose_ = $(cargo_verbose_$(AM_DEFAULT_VERBOSITY))
+cargo_verbose_0 =
+cargo_verbose_1 = --verbose
+
+$(RUST_LIB): $(RUST_SRC)
+	cd $(top_srcdir)/rust && \
+	CARGO_TARGET_DIR=@abs_top_builddir@/rust/target cargo build $(CARGO_VERBOSE) $(CARGO_RELEASE_ARGS)
+
+check-local:
+	cd $(srcdir)/rust && \
+	CARGO_TARGET_DIR=@abs_top_builddir@/rust/target cargo test
+
+clean-local:
+	cd $(srcdir)/rust && \
+	CARGO_TARGET_DIR=@abs_top_builddir@/rust/target cargo clean
