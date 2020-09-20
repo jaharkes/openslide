@@ -1,0 +1,8 @@
+language = "C"
+
+[export.rename]
+"LruCache_CacheKey__CacheEntry" = "_openslide_cache"
+"CacheEntry" = "_openslide_cache_entry"
+
+[fn]
+sort_by = "None"

@@ -10,6 +10,7 @@ pkgconfig_DATA = openslide.pc
 ACLOCAL_AMFLAGS=-I m4
 
 RUST_LIB=@abs_top_builddir@/rust/target/@RUST_TARGET_SUBDIR@/libopenslide_internals.a
+RUST_HDR=@abs_top_builddir@/rust/openslide-internals.h
 
 
 lib_LTLIBRARIES = src/libopenslide.la
@@ -20,7 +21,6 @@ src_libopenslide_la_LIBADD = $(GLIB2_LIBS) $(CAIRO_LIBS) $(SQLITE3_LIBS) \
 
 src_libopenslide_la_SOURCES = \
 	src/openslide.c \
-	src/openslide-cache.c \
 	src/openslide-decode-gdkpixbuf.c \
 	src/openslide-decode-jp2k.c \
 	src/openslide-decode-jpeg.c \
@@ -185,11 +185,14 @@ EXTRA_DIST += $(man_MANS:=.in)
 ## Rust code
 # see https://people.gnome.org/~federico/blog/librsvg-build-infrastructure.html
 RUST_SRC = \
-	rust/Cargo.toml \
-	rust/src/lib.rs
+	rust/cbindgen.toml \
+	rust/src/cache.rs \
+	rust/src/lib.rs \
+	rust/src/lrucache.rs
 
 RUST_EXTRA = \
-	rust/Cargo.lock
+	rust/Cargo.lock \
+	rust/Cargo.toml
 
 EXTRA_DIST += $(RUST_SRC) $(RUST_EXTRA)
 
@@ -204,9 +207,16 @@ cargo_verbose_ = $(cargo_verbose_$(AM_DEFAULT_VERBOSITY))
 cargo_verbose_0 =
 cargo_verbose_1 = --verbose
 
-$(RUST_LIB): $(RUST_SRC)
+$(RUST_LIB): $(RUST_SRC) rust/Cargo.toml
 	cd $(top_srcdir)/rust && \
-	CARGO_TARGET_DIR=@abs_top_builddir@/rust/target cargo build $(CARGO_VERBOSE) $(CARGO_RELEASE_ARGS)
+	CARGO_TARGET_DIR=@abs_top_builddir@/rust/target cargo build \
+		$(CARGO_VERBOSE) $(CARGO_RELEASE_ARGS)
+	@touch $@  # make sure we don't keep rebuilding because of Cargo.toml
+
+# rust lib dependency so that we try to build at least once
+$(RUST_HDR): $(RUST_SRC) $(RUST_LIB)
+	cd $(top_srcdir)/rust && \
+	cbindgen --crate openslide_internals --output $@
 
 check-local:
 	cd $(srcdir)/rust && \
@@ -215,3 +225,4 @@ check-local:
 clean-local:
 	cd $(srcdir)/rust && \
 	CARGO_TARGET_DIR=@abs_top_builddir@/rust/target cargo clean
+	rm -f $(RUST_HDR)

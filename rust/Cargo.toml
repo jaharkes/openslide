@@ -1,10 +1,20 @@
 [package]
 name = "openslide_internals"
 version = "0.1.0"
-authors = ["Jan Harkes <jaharkes@cs.cmu.edu>"]
+publish = false
+authors = [
+    "Adam Goode",
+    "Benjamin Gilbert",
+    "Jan Harkes <jaharkes@cs.cmu.edu>",
+]
 edition = "2018"
+homepage = "https://openslide.org/"
+repository  = "https://github.com/openslide/openslide/"
+license = "LGPL-2.1-only"
+#links = "glib-2.0"
 
 [dependencies]
+linked-hash-map = "0.5.3"
 
 [lib]
 name = "openslide_internals"
