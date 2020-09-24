@@ -42,14 +42,6 @@ impl<K, V> _LruCache<K, V>
 where
     K: Hash + Eq,
 {
-    fn new(capacity_in_bytes: usize) -> _LruCache<K, V> {
-        _LruCache {
-            lru: LinkedHashMap::new(),
-            capacity: capacity_in_bytes,
-            total_size: 0,
-        }
-    }
-
     fn _shrink_to_fit(&mut self, reserve: usize) {
         // drop entries to clear cache space
         while self.total_size + reserve > self.capacity {
@@ -61,44 +53,6 @@ where
             }
         }
     }
-
-    fn get_capacity(&self) -> usize {
-        self.capacity
-    }
-
-    fn set_capacity(&mut self, capacity_in_bytes: usize) {
-        self.capacity = capacity_in_bytes;
-        self._shrink_to_fit(0); // resize cache to fit new size
-    }
-
-    fn put(&mut self, key: K, val: V, size: usize) -> Arc<V> {
-        // remove key if it exists
-        if let Some(old_val) = self.lru.remove(&key) {
-            self.total_size -= old_val.size;
-        }
-
-        // drop entries to clear cache space
-        self._shrink_to_fit(size);
-
-        // add the new entry
-        let val = Arc::new(val);
-        self.lru.insert(
-            key,
-            CacheItem {
-                entry: val.clone(),
-                size,
-            },
-        );
-        self.total_size += size;
-        val
-    }
-
-    fn get(&mut self, key: &K) -> Option<Arc<V>> {
-        match self.lru.get_refresh(key) {
-            Some(val) => Some(val.entry.clone()),
-            None => None,
-        }
-    }
 }
 
 pub struct LruCache<K, V>(Mutex<_LruCache<K, V>>);
@@ -108,27 +62,55 @@ where
     K: Hash + Eq,
 {
     pub fn new(capacity_in_bytes: usize) -> LruCache<K, V> {
-        LruCache(Mutex::new(_LruCache::new(capacity_in_bytes)))
+        LruCache(Mutex::new(_LruCache {
+            lru: LinkedHashMap::new(),
+            capacity: capacity_in_bytes,
+            total_size: 0,
+        }))
     }
 
     pub fn get_capacity(&self) -> usize {
         let cache = self.0.lock().unwrap();
-        cache.get_capacity()
+
+        cache.capacity
     }
 
     pub fn set_capacity(&self, capacity_in_bytes: usize) {
         let mut cache = self.0.lock().unwrap();
-        cache.set_capacity(capacity_in_bytes);
+
+        cache.capacity = capacity_in_bytes;
+        cache._shrink_to_fit(0); // resize cache to fit new size
     }
 
     pub fn put(&self, key: K, val: V, size: usize) -> Arc<V> {
         let mut cache = self.0.lock().unwrap();
-        cache.put(key, val, size)
+
+        // remove key if it exists
+        if let Some(old_val) = cache.lru.remove(&key) {
+            cache.total_size -= old_val.size;
+        }
+
+        // drop entries to clear cache space
+        cache._shrink_to_fit(size);
+
+        // add the new entry
+        let val = Arc::new(val);
+        cache.lru.insert(
+            key,
+            CacheItem {
+                entry: val.clone(),
+                size,
+            },
+        );
+        cache.total_size += size;
+        val
     }
 
     pub fn get(&self, key: &K) -> Option<Arc<V>> {
         let mut cache = self.0.lock().unwrap();
-        cache.get(key)
+
+        let val = cache.lru.get_refresh(key)?;
+        Some(val.entry.clone())
     }
 }
 
