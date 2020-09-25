@@ -20,7 +20,30 @@
 // SPDX-Licence-Identifier: LGPL-2.1-only
 //
 
-//! LRU Cache that evicts objects based on sum of object sizes
+//! This is an implementation of a LRU Cache that evicts objects
+//! based on the total size of the cached objects.
+//!
+//! # Examples
+//!
+//! ```
+//! let cache: LruCache<u32, u32> = LruCache::new(200);
+//!
+//! cache.put(0, 0, 100);
+//! cache.put(1, 1, 100);
+//!
+//! // Accessing the first entry brings it to the top the LRU
+//! cache.get(&0);
+//!
+//! // this will push the least-recently-used entry out of the cache
+//! cache.put(2, 2, 100);
+//!
+//! // second entry should be evicted from cache
+//! assert!(cache.get(&1).is_none());
+//!
+//! // first and third entries should still exist in the cache
+//! assert_eq!(cache.get(&0), Some(Arc::new(0)));
+//! assert_eq!(cache.get(&2), Some(Arc::new(2)));
+//! ```
 
 extern crate linked_hash_map;
 use linked_hash_map::LinkedHashMap;
@@ -61,6 +84,7 @@ impl<K, V> LruCache<K, V>
 where
     K: Hash + Eq,
 {
+    /// Initialize a new LruCache, with the specified maximum size.
     pub fn new(capacity_in_bytes: usize) -> LruCache<K, V> {
         LruCache(Mutex::new(_LruCache {
             lru: LinkedHashMap::new(),
@@ -69,12 +93,26 @@ where
         }))
     }
 
+    /// Get configured LruCache maximum size
+    ///
+    /// **Note to self:** Maybe it would be more useful to return
+    /// the total size of currently cached objects?
     pub fn get_capacity(&self) -> usize {
         let cache = self.0.lock().unwrap();
 
         cache.capacity
     }
 
+    /// Set new LruCache maximum capacity
+    ///
+    /// Will discard least recently used objects that exceed the new
+    /// size, can as such be used to empty the current cache.
+    ///
+    /// ```
+    /// let saved = cache.get_capacity();
+    /// cache.set_capacity(0);
+    /// cache.set_capacity(saved);
+    /// ```
     pub fn set_capacity(&self, capacity_in_bytes: usize) {
         let mut cache = self.0.lock().unwrap();
 
@@ -82,6 +120,13 @@ where
         cache._shrink_to_fit(0); // resize cache to fit new size
     }
 
+    /// Add a new object to the cache.
+    ///
+    /// If the key already exists the existing entry is replaced.
+    /// Otherwise if the cache is full the least-recently-used
+    /// cached objects are discarded before the new object is added.
+    ///
+    /// This function returns a reference to the newly added object.
     pub fn put(&self, key: K, val: V, size: usize) -> Arc<V> {
         let mut cache = self.0.lock().unwrap();
 
@@ -106,6 +151,10 @@ where
         val
     }
 
+    /// Retrieve a cached object.
+    ///
+    /// If the key does not exist this function returns None.
+    /// Otherwise it returns a reference to the cached object.
     pub fn get(&self, key: &K) -> Option<Arc<V>> {
         let mut cache = self.0.lock().unwrap();
 

@@ -20,7 +20,10 @@
 // SPDX-Licence-Identifier: LGPL-2.1-only
 //
 
-//! Cache that evicts objects based on total object size.
+//! Wrapper around [`LruCache`] to provide FFI-bindings and deallocate
+//! cached C objects that were allocated with `g_slice_alloc()`.
+//!
+//! [`LruCache`]: ../lrucache/index.html
 
 use crate::lrucache::LruCache;
 use std::ffi::c_void;
@@ -29,16 +32,26 @@ use std::os::raw::c_int;
 use std::ptr;
 use std::sync::Arc;
 
+// CacheKey is used to collect the parts of the key and make the function
+// signatures more readable. But it isn't really exposed through the FFI
+// API so there isn't much to document.
+#[doc(hidden)]
 #[derive(Hash, Eq, PartialEq)]
 pub struct CacheKey(*const c_void, i64, i64);
 
-// Special CacheEntry struct so we can free the cached data
-// that was allocated in the C code with g_slice_alloc.
-// Cleaner solutions would be,
-// - add a dealloc callback
-// - expose a Rust allocator to C.
-//
-// However, either way would require changes to existing code.
+/// A CacheEntry struct that wraps the C objects with a custom drop.
+///
+/// We use this so we free the cached data that was allocated with
+/// g_slice_alloc in the calling C code.
+///
+/// Cleaner solutions would be,
+/// - add a dealloc callback so we can have both allocation and
+///   deallocations in the C code.
+/// - expose a Rust object allocator to C, so allocations and
+///   deallocations happen in the Rust part of the code.
+///
+/// However, either way would require changes to existing code.
+#[derive(Hash, Eq, PartialEq)]
 pub struct CacheEntry {
     data: *mut c_void,
     size: usize,
@@ -56,13 +69,11 @@ impl Drop for CacheEntry {
     }
 }
 
-//
-// Functions called from C
-//
-
+/// Useful cache size to allocate per open slide handle.
+/// currently defaults to 32MB.
 pub const _OPENSLIDE_USEFUL_CACHE_SIZE: usize = 1024 * 1024 * 32;
 
-// constructor/destructor
+/// Create a new cache.
 #[no_mangle]
 pub extern "C" fn _openslide_cache_create(
     capacity_in_bytes: c_int,
@@ -70,6 +81,7 @@ pub extern "C" fn _openslide_cache_create(
     Box::into_raw(Box::new(LruCache::new(capacity_in_bytes as usize)))
 }
 
+/// Destroy a cache and drop all cached objects.
 #[no_mangle]
 pub extern "C" fn _openslide_cache_destroy(cache: *mut LruCache<CacheKey, CacheEntry>) {
     if !cache.is_null() {
@@ -79,6 +91,11 @@ pub extern "C" fn _openslide_cache_destroy(cache: *mut LruCache<CacheKey, CacheE
     }
 }
 
+/// Get the currently configured maximum cache size.
+///
+/// Wrapper around [`LruCache::get_capacity()`].
+///
+/// [`LruCache::get_capacity()`]: ../lrucache/struct.LruCache.html#method.get_capacity
 #[no_mangle]
 pub extern "C" fn _openslide_cache_get_capacity(
     cache: *const LruCache<CacheKey, CacheEntry>,
@@ -90,6 +107,11 @@ pub extern "C" fn _openslide_cache_get_capacity(
     cache.get_capacity() as c_int
 }
 
+/// Set the maximum cache size.
+///
+/// Wrapper around [`LruCache::set_capacity()`]
+///
+/// [`LruCache::set_capacity()`]: ../lrucache/struct.LruCache.html#method.set_capacity
 #[no_mangle]
 pub extern "C" fn _openslide_cache_set_capacity(
     cache: *const LruCache<CacheKey, CacheEntry>,
@@ -102,6 +124,17 @@ pub extern "C" fn _openslide_cache_set_capacity(
     cache.set_capacity(capacity_in_bytes as usize);
 }
 
+/// Add an object to the cache.
+///
+/// Adds an object `data` that is `size_in_bytes` long to the cache in the
+/// position indexed by (`plane`, `x`, `y`). This will evict anything that
+/// is already stored in that location as well as the least recently accessed
+/// items that exceed the configured cache size.
+///
+/// This function returns a reference to the cached `entry`, which must be
+/// released with [`_openslide_cache_entry_unref()`].
+///
+/// [`_openslide_cache_entry_unref()`]: ./fn._openslide_cache_entry_unref.html
 #[no_mangle]
 pub extern "C" fn _openslide_cache_put(
     cache: *const LruCache<CacheKey, CacheEntry>,
@@ -131,6 +164,13 @@ pub extern "C" fn _openslide_cache_put(
     }
 }
 
+/// Find a cached object in the cache.
+///
+/// This function returns both pointer to the cached object data as well as
+/// a reference to the cached `entry`, which must be released with
+/// [`_openslide_cache_entry_unref()`].
+///
+/// [`_openslide_cache_entry_unref()`]: ./fn._openslide_cache_entry_unref.html
 #[no_mangle]
 pub extern "C" fn _openslide_cache_get(
     cache: *const LruCache<CacheKey, CacheEntry>,
@@ -151,10 +191,20 @@ pub extern "C" fn _openslide_cache_get(
             ptr::write(entry, Arc::into_raw(val));
             (*(*entry)).data
         },
-        None => ptr::null(),
+        None => unsafe {
+            // should we even bother to null the entry?
+            // it is the only reason this part of the code is marked 'unsafe'.
+            assert!(!entry.is_null());
+            ptr::write(entry, ptr::null());
+            ptr::null()
+        }
     }
 }
 
+/// Release a reference to a cached entry.
+///
+/// This allows the pointer to the associated data to be safely deallocated
+/// when the object is dropped from the cache.
 #[no_mangle]
 pub extern "C" fn _openslide_cache_entry_unref(entry: *mut CacheEntry) {
     if !entry.is_null() {
