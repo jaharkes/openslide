@@ -2,4 +2,3 @@
 //! are rewritten as Rust code.
 
 pub mod cache;
-pub mod lrucache;

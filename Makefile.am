@@ -187,8 +187,7 @@ EXTRA_DIST += $(man_MANS:=.in)
 RUST_SRC = \
 	rust/cbindgen.toml \
 	rust/src/cache.rs \
-	rust/src/lib.rs \
-	rust/src/lrucache.rs
+	rust/src/lib.rs
 
 RUST_EXTRA = \
 	rust/Cargo.lock \
