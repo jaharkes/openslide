@@ -31,7 +31,6 @@ src_libopenslide_la_SOURCES = \
 	src/openslide-decode-xml.c \
 	src/openslide-error.c \
 	src/openslide-grid.c \
-	src/openslide-hash.c \
 	src/openslide-jdatasrc.c \
 	src/openslide-tables.c \
 	src/openslide-util.c \
@@ -187,7 +186,9 @@ EXTRA_DIST += $(man_MANS:=.in)
 RUST_SRC = \
 	rust/cbindgen.toml \
 	rust/src/cache.rs \
-	rust/src/lib.rs
+	rust/src/hash.rs \
+	rust/src/lib.rs \
+	rust/src/util.rs
 
 RUST_EXTRA = \
 	rust/Cargo.lock \

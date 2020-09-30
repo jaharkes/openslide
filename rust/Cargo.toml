@@ -14,7 +14,9 @@ license = "LGPL-2.1-only"
 #links = "glib-2.0"
 
 [dependencies]
+glib-sys = "0.4.0"
 linked-hash-map = "0.5.3"
+sha2 = "0.9.1"
 
 [lib]
 name = "openslide_internals"
