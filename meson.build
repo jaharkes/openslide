@@ -99,7 +99,7 @@ if compiler.sizeof('uintptr_t', prefix : '#include <stdint.h>') != -1
 endif
 
 if platform_win32
-  conf.set_quoted('FOPEN_CLOEXEC_FLAG', 'M')
+  conf.set_quoted('FOPEN_CLOEXEC_FLAG', 'N')
 else
   code = '''
   #include <stdio.h>
