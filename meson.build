@@ -156,6 +156,16 @@ needs_libm = not compiler.has_function('floor', prefix : '#include <math.h>')
 libm_dep = compiler.find_library('m', required : needs_libm)
 assert(compiler.has_function('floor', prefix : '#include <math.h>', dependencies : libm_dep))
 
+# try to find zlib through pkgconfig, as a system library, and finally build a
+# local fallback based on the wrap file in subprojects/
+zlib_dep = dependency('zlib', required : false)
+if not zlib_dep.found()
+  zlib_dep = compiler.find_library('z', required: false)
+  if not zlib_dep.found()
+    zlib_dep = dependency('zlib')
+  endif
+endif
+
 glib2_dep     = dependency('glib-2.0', version : '>= 2.56')
 gio2_dep      = dependency('gio-2.0')
 gobject2_dep  = dependency('gobject-2.0')
@@ -168,7 +178,6 @@ openjp2_dep   = dependency('libopenjp2', version : '> 2.1.0', fallback : ['libop
 gdkpixbuf_dep = dependency('gdk-pixbuf-2.0', version : '>= 2.14')
 cairo_dep     = dependency('cairo', version : '>= 1.2')
 sqlite3_dep   = dependency('sqlite3', version : '>= 3.6.20')
-zlib_dep      = dependency('zlib')
 
 valgrind  = dependency('valgrind', required : false)
 if valgrind.found()
