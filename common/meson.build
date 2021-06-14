@@ -4,11 +4,16 @@ openslide_common_sources = [
   'openslide-common-fd.c',
 ]
 
-openslide_common = static_library('openslide-common', openslide_common_sources,
-  dependencies : [libopenslide, glib2],
+openslide_common = static_library('openslide-common',
+  openslide_common_sources,
+  include_directories : config_h_include,
+  dependencies : [
+    openslide_dep,
+    glib2_dep,
+  ],
 )
 
-libopenslide_common = declare_dependency(
+openslide_common_dep = declare_dependency(
   include_directories : include_directories('.'),
   link_with : openslide_common,
 )

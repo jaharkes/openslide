@@ -45,7 +45,7 @@ openslide_sources = [
 
 # generate openslide-tables.c
 make_tables = executable('make-tables', 'make-tables.c',
-  dependencies: [libm],
+  dependencies: [libm_dep],
 )
 openslide_tables = custom_target('make openslide-tables',
   output : 'openslide-tables.c',
@@ -53,31 +53,31 @@ openslide_tables = custom_target('make openslide-tables',
 )
 openslide_sources = openslide_sources + [openslide_tables]
 
-openslide_dependencies = [
-  glib2,
-  gthread2,
-  gio2,
-  gobject2,
-  cairo,
-  sqlite3,
-  libxml2,
-  openjpeg,
-  libtiff,
-  libjpeg,
-  libpng,
-  gdkpixbuf,
-  zlib,
-  libm,
-]
-
-openslide = library('openslide', openslide_sources,
+openslide = library('openslide',
+  openslide_sources,
   soversion : lt_current,
   version : lt_version,
-  dependencies : openslide_dependencies,
+  include_directories : config_h_include,
+  dependencies : [
+    glib2_dep,
+    gthread2_dep,
+    gio2_dep,
+    gobject2_dep,
+    gdkpixbuf_dep,
+    cairo_dep,
+    sqlite3_dep,
+    libxml2_dep,
+    libtiff4_dep,
+    openjp2_dep,
+    libjpeg_dep,
+    libpng_dep,
+    zlib_dep,
+    libm_dep,
+  ],
   install : true
 )
 
-libopenslide = declare_dependency(
+openslide_dep = declare_dependency(
   include_directories : include_directories('.'),
   link_with : openslide,
 )

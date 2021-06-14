@@ -4,7 +4,8 @@ project('OpenSlide', 'c',
   default_options : [
     'warning_level=3',
     'default_library=shared',
-    'c_std=c99',
+    # c99 seems to break libffi subproject build
+    #'c_std=c99',
   ]
 )
 # bug-report: openslide-users@lists.andrew.cmu.edu
@@ -152,33 +153,22 @@ endif
 
 
 needs_libm = not compiler.has_function('floor', prefix : '#include <math.h>')
-libm = compiler.find_library('m', required : needs_libm)
-assert(compiler.has_function('floor', prefix : '#include <math.h>', dependencies : libm))
+libm_dep = compiler.find_library('m', required : needs_libm)
+assert(compiler.has_function('floor', prefix : '#include <math.h>', dependencies : libm_dep))
 
-zlib = dependency('zlib', required : false)
-if not zlib.found()
-  zlib = compiler.find_library('z', required : true)
-  assert(compiler.has_function('inflate', dependencies : zlib))
-endif
-
-libjpeg = dependency('libjpeg', version : '>= 1.5.0', required : false)
-if not libjpeg.found()
-  # IJG libjpeg, or libjpeg-turbo < 1.5.0
-  libjpeg = compiler.find_library('jpeg', required : true)
-  assert(compiler.has_function('jpeg_CreateDecompress', dependencies : libjpeg))
-endif
-
-openjpeg  = dependency('libopenjp2', version : '> 2.1.0')
-libpng    = dependency('libpng', version : '> 1.2')
-libtiff   = dependency('libtiff-4')
-glib2     = dependency('glib-2.0', version : '>= 2.56')
-gthread2  = dependency('gthread-2.0')
-gio2      = dependency('gio-2.0')
-gobject2  = dependency('gobject-2.0')
-gdkpixbuf = dependency('gdk-pixbuf-2.0', version : '>= 2.14')
-cairo     = dependency('cairo', version : '>= 1.2')
-libxml2   = dependency('libxml-2.0')
-sqlite3   = dependency('sqlite3', version : '>= 3.6.20')
+glib2_dep     = dependency('glib-2.0', version : '>= 2.56')
+gio2_dep      = dependency('gio-2.0')
+gobject2_dep  = dependency('gobject-2.0')
+gthread2_dep  = dependency('gthread-2.0')
+libjpeg_dep   = dependency('libjpeg', version : '>= 1.5.0')
+libpng_dep    = dependency('libpng', version : '> 1.2')
+libtiff4_dep  = dependency('libtiff-4')
+libxml2_dep   = dependency('libxml-2.0', fallback : ['libxml2', 'xml2lib_dep'])
+openjp2_dep   = dependency('libopenjp2', version : '> 2.1.0', fallback : ['libopenjp2', 'libopenjp2_dep'])
+gdkpixbuf_dep = dependency('gdk-pixbuf-2.0', version : '>= 2.14')
+cairo_dep     = dependency('cairo', version : '>= 1.2')
+sqlite3_dep   = dependency('sqlite3', version : '>= 3.6.20')
+zlib_dep      = dependency('zlib')
 
 valgrind  = dependency('valgrind', required : false)
 if valgrind.found()
@@ -186,7 +176,7 @@ if valgrind.found()
 endif
 
 configure_file(output : 'config.h', configuration : conf)
-add_project_arguments('-I@0@'.format(meson.build_root()), language : 'c')
+config_h_include = include_directories('.')
 
 subdir('src')
 subdir('common')

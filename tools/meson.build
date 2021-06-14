@@ -1,12 +1,16 @@
 tools = [
-  ['openslide-show-properties', 'openslide-show-properties.c', [glib2]],
-  ['openslide-quickhash1sum', 'openslide-quickhash1sum.c', [glib2]],
-  ['openslide-write-png', 'openslide-write-png.c', [glib2, libpng]],
+  ['openslide-show-properties', 'openslide-show-properties.c', [glib2_dep]],
+  ['openslide-quickhash1sum', 'openslide-quickhash1sum.c', [glib2_dep]],
+  ['openslide-write-png', 'openslide-write-png.c', [glib2_dep, libpng_dep]],
 ]
 
 foreach t : tools
   executable(t[0], t[1],
-    dependencies : [libopenslide, libopenslide_common] + t[2],
+    dependencies : [
+      openslide_dep,
+      openslide_common_dep,
+      t[2]
+    ],
     install : true,
   )
   install_man(
