@@ -10,6 +10,8 @@ project('OpenSlide', 'c',
 )
 # bug-report: openslide-users@lists.andrew.cmu.edu
 
+# some of the following is based on
+#   https://github.com/hughsie/appstream-glib/blob/master/meson.build
 
 # libtool versioning - this applies to libopenslide
 #
@@ -52,6 +54,7 @@ endif
 # check for functions/types
 compiler = meson.get_compiler('c')
 host_os = host_machine.system()
+
 platform_win32 = (host_os.startswith('mingw') or
                   host_os.startswith('cygwin') or
                   host_os.startswith('windows'))
