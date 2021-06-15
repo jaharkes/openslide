@@ -62,9 +62,6 @@ platform_osx = host_os.startswith('darwin')
 
 
 if platform_win32
-# if host_os == 'mingw32' and build_os == 'cygwin'
-#   conf.set_quoted(CYGWIN_CROSS_TEST, 'yes')
-# endif
   if compiler.has_argument('-mpreferred-stack-boundary=2')
     add_project_arguments('-mpreferred-stack-boundary=2', language : 'c')
   endif
