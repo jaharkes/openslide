@@ -10,31 +10,18 @@ project('OpenSlide', 'c',
 )
 # bug-report: openslide-users@lists.andrew.cmu.edu
 
-# some of the following is based on
-#   https://github.com/hughsie/appstream-glib/blob/master/meson.build
-
 # libtool versioning - this applies to libopenslide
 #
-# See http://sources.redhat.com/autobook/autobook/autobook_91.html#SEC91 for details
+# - when any library source has changed, increment lt_revision
+# - when interfaces were added/removed/changed, increment lt_current and set
+#   lt_revision to 0
+# - if any interfaces were added, increment lt_age
+# - if any interfaces were removed or changed, set lt_age to 0
 #
-# - If interfaces have been changed or added, but binary compatibility
-#   has been preserved, change:
-#      CURRENT += 1
-#      REVISION = 0
-#      AGE += 1
-# - If binary compatibility has been broken (eg removed or changed
-#   interfaces), change:
-#      CURRENT += 1
-#      REVISION = 0
-#      AGE = 0
-# - If the interface is the same as the previous version, but bugs are
-#   fixed, change:
-#      REVISION += 1
-#
-lt_current = '4'
-lt_revision = '1'
-lt_age = '4'
-lt_version = '@0@.@1@.@2@'.format(lt_current, lt_age, lt_revision)
+lt_revision = 1
+lt_current = 4
+lt_age = 4
+lt_version = '@0@.@1@.@2@'.format(lt_current-lt_age, lt_age, lt_revision)
 
 
 conf = configuration_data()
@@ -90,13 +77,12 @@ endif
 # using 200809L so that strdup is defined as well
 add_project_arguments('-D_POSIX_C_SOURCE=200809L', language : 'c')
 
-if compiler.has_function('fseeko', prefix : '#define _POSIX_C_SOURCE 200809L\n#include <stdio.h>')
-  conf.set('HAVE_FSEEKO', 1)
-endif
-
-if compiler.sizeof('uintptr_t', prefix : '#include <stdint.h>') != -1
-  conf.set('HAVE_UINTPTR_T', 1)
-endif
+conf.set10('HAVE_FSEEKO',
+  compiler.has_function('fseeko', prefix : '#define _POSIX_C_SOURCE 200809L\n#include <stdio.h>')
+)
+conf.set10('HAVE_UINTPTR_T',
+  compiler.sizeof('uintptr_t', prefix : '#include <stdint.h>') != -1
+)
 
 if platform_win32
   conf.set_quoted('FOPEN_CLOEXEC_FLAG', 'N')

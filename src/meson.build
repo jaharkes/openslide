@@ -55,7 +55,6 @@ openslide_sources = openslide_sources + [openslide_tables]
 
 openslide = library('openslide',
   openslide_sources,
-  soversion : lt_current,
   version : lt_version,
   include_directories : config_h_include,
   dependencies : [
